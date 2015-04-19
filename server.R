@@ -9,13 +9,13 @@ library(scales)
 library(chipPCR)
 library(xlsx)
 
-if(installed.packages(.Library) %>%
-   as.data.frame %>%
-   filter(Package == "RDML",
-          Version == "0.8-4") %>% nrow() %>% "=="(0)) {
-  library(devtools)
-  install_github("kablag/RDML")
-}
+# if(installed.packages(.Library) %>%
+#    as.data.frame %>%
+#    filter(Package == "RDML",
+#           Version == "0.8-4") %>% nrow() %>% "=="(0)) {
+#   library(devtools)
+#   install_github("kablag/RDML")
+# }
 
 library(RDML)
 
@@ -98,7 +98,7 @@ shinyServer(function(input, output, session) {
       names(values$expTexts) <- values$expIds
       checkboxGroupInput(
         "experimentsChecks", 
-        "Эксперименты:",
+        "Experiments:",
         values$expIds,
         selected = values$expIds)
     })
