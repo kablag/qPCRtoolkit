@@ -67,7 +67,26 @@ shinyServer(function(input, output, session) {
     isolate({
       values$experiments <- 
         c(values$experiments,
-          RDML$new(path))
+          RDML$new(path,
+                   conditions.sep = "@"))
+      values$mergedRDML <- NULL
+      values$tbl <- NULL
+      values$tblCq <- NULL
+      values$calib <- NULL
+      if(!is.null(substrCalced))
+        substrCalced <- FALSE
+    })
+  })
+  
+  observe({
+    if (input$useExampleFileBtn == 0 )
+      return(NULL)
+    cat("adding example experiment\n")
+    isolate({
+      values$experiments <-
+        c(values$experiments,
+          RDML$new("www/data/Demo_Rel Quant Dual Color.lc96p",
+                   conditions.sep = "@"))
       values$mergedRDML <- NULL
       values$tbl <- NULL
       values$tblCq <- NULL
@@ -176,18 +195,18 @@ shinyServer(function(input, output, session) {
         quantity = 
           if(id[[1]]$publisher == "Roche Diagnostics") {
             quantity <- filter(sample[[react$sample]]$annotation,
-                           property == sprintf("Roche_quantity_at_%s_%s",
-                                               target[[data$id]]$dyeId,
-                                               react$id))$value[1]
+                               property == sprintf("Roche_quantity_at_%s_%s",
+                                                   target[[data$id]]$dyeId,
+                                                   react$id))$value[1]
             ifelse(is.null(quantity),
                    NA,
                    quantity)
           }
-          else
-            sample[[react$sample]]$quantity$value
-        )
+        else
+          sample[[react$sample]]$quantity$value
+      )
   })
-
+  
   output$limitCyclePanel <- renderUI({
     if(is.null(values$tbl) ||
        is.null(values$mergedRDML))
@@ -242,7 +261,7 @@ shinyServer(function(input, output, session) {
       return(NULL)
     cat("creating backgroundPanel\n")
     sliderInput("backgroundFromTo",
-                "Bacground Cycles",
+                "Background Cycles",
                 value = c(3, 10),
                 min = input$limitCycleFromTo[1],
                 max = input$limitCycleFromTo[2],
@@ -265,6 +284,7 @@ shinyServer(function(input, output, session) {
                                   x,
                                   bg.range =                                          
                                     input$backgroundFromTo,
+                                  smoother = FALSE,
                                   method.norm = "none")$y))    
     values$mergedRDML$SetFData(substr, values$tbl)
     TRUE    
@@ -334,7 +354,8 @@ shinyServer(function(input, output, session) {
           group_by(fdata.name) %>%
           mutate(Cq = as.numeric(tryCatch(
             th.cyc(fdata[, 1],
-                   fdata[, fdata.name], 
+                   fdata[, fdata.name],
+                   # auto = TRUE
                    r = input[[sprintf("thresholdValue_%s", 
                                       target)]]
             )@.Data[1],
@@ -736,7 +757,7 @@ shinyServer(function(input, output, session) {
     cat("creating showRelGenesUi\n")
     unique(values$tblCq$target) %>%
       setdiff(input$refGenes) %>% 
-      selectInput("showRelGenes", "Show Genes",
+      selectInput("showRelGenes", "Show Targets",
                   choices = .,
                   selected = .,
                   multiple = TRUE)
@@ -869,7 +890,7 @@ shinyServer(function(input, output, session) {
             from = values$tblRelative[[input$displayRatio]] %>%
               min(na.rm = TRUE) %>% log10 %>% "-"(.5))) } +
       theme(axis.text.x = element_text(angle = 90, hjust = 1)) +
-      ylab("Соотношение") + 
+      ylab("Ratio") + 
       xlab(sprintf("%s, %s",
                    splitNames[input$splitOpts[1]],
                    splitNames[input$splitOpts[2]])) +

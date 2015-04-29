@@ -1,0 +1,81 @@
+<html>
+<body>
+<h1>Adding Experiments</h1>
+<p>Fluorescence data can be added to qPCRtoolkit as files in RDML
+format (.rdml or .lc96p). To add files click Choose File at
+Experiments tab. Multiply files can be uploaded (one by one) for
+usage at one analysis. Run data of each uploaded file is listed at
+Experiments tab. Unchecking of this data is results in excluding
+corresponding experiment from analysis. Samples conditions for
+experiments from devices except LightCycler 96 should added to
+samples names as SAMPLE_NAME@CONDITION.</p>
+<p>Click Example File to load example which can be used as example for absolute and relative quantification.</p
+<h1>Performing Absolute Quantification</h1>
+<p>This analysis can be done on the Absolute Quantification tab.</p>
+<h1>Sidebar panel:</h2>
+<ul>
+	<li><p>Limit Cycles — limits min and max cycle to analyse. All
+	fluorescence points below min cycle and upper max cycle will be
+	omitted. If one of experiments has less cycles than max cycle then
+	fluorescence data point will be added (same as last available).</p>
+	<li><p>Background Cycles — min and max cycle to use as background
+	(is displayed on the Amplification Plot as gray vertical bar).</p>
+	<li><p>Apply Background Substraction — use or do not use
+	background substraction.</p>
+	<li><p>Threshold TARGET_NAME — threshold level for each target in
+	analysis (is displayed on the Amplification Plot as horisontal lines
+	colored as targets).</p>
+	<li><p>Show — selects type of plot to view: amplification of
+	calibration.</p>
+	<li><p>Targets — selects which targets will be shown.</p>
+	<li><p>Export .xlsx — exports all data from Results Table as
+	Excell file.</p>
+</ul>
+<h1>Main panel:</h2>
+<ul>
+	<li><p>Amplification or calibration plot</p>
+	<li><p>Amplification Plot — shows amplications curves colored by
+	type of sample or target.</p>
+	<li><p>Calibration Plot — shows calibration curves. And results of
+	efficiency calculations.</p>
+	<li><p>Plate View — shows plate for each experiment. Clicking on
+	cell selects curve to view.</p>
+	<li><p>Results Table — represents information abput samples and
+	calculated values.</p>
+</ul>
+<h1>Performing Relative Quantification</h1>
+<p>Absolute quantification should be performed before relative
+quantification.</p>
+<h1>Sidebar panel:</h2>
+<ul>
+	<li><p>Reference Genes — selects reference genes to use in
+	analysis.</p>
+	<li><p>Run Calibrator — selects sample to use as run calibrator —
+	calibrator between experiments (select Cal for example file).</p>
+	<li><p>Study Calibrator — selects condition to use as calibrator
+	inside analysis (select 0h for example file)</p>
+	<li><p>Show Targets — which targets will be shown on Bar Plot.</p>
+	<li><p>Show Samples — which samples will be shown on Bar Plot.</p>
+	<li><p>Show Conditions — which conditions will be shown on Bar
+	Plot.</p>
+	<li><p>Split By — defines in which order results on Bar Plot will
+	be separated.</p>
+	<li><p>Show Ratio — selects type of analysis to show on Bar Plot:
+	Relative, Normalized (Run Calibrator should be defined), Scaled
+	(Study Calibrator should be defined).</p>
+	<li><p>Y-Axis Type — log or linear y-axis.</p>
+	<li><p>Show Errors — show errors of calculation on Bar Plot if
+	checked.</p>
+	<li><p>Export .xlsx — exports all data from Results Table as
+	Excell file.</p>
+</ul>
+<h1>Main panel:</h2>
+<ul>
+	<li><p>Bar Plot — mean values of calculated ratios.</p>
+	<li><p>Results Table — represents information abput samples and
+	calculated values.</p>
+</ul>
+<p style="margin-left: 1.87cm"><br><br>
+</p>
+</body>
+</html>

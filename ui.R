@@ -14,7 +14,9 @@ shinyUI(fluidPage(
       conditionalPanel(
         condition = "input.mainTabsetPanel == 'experiments'",
         fileInput("rdmlFile",
-                  "Add File...")),
+                  "Add File..."),
+        actionLink("useExampleFileBtn",
+                     "Example File")),
       #       shinyFilesButton("rdmlFile", 
       #                        "Добавить файл...", 
       #                        'Please select a file', multiple = TRUE)
@@ -72,6 +74,9 @@ shinyUI(fluidPage(
     mainPanel(
       tabsetPanel(
         id = "mainTabsetPanel",
+        tabPanel("User Manual",
+                 value = "userManual",
+                 includeHTML("usermanual.html")),
         tabPanel("Experiments",
                  value = "experiments",
                  uiOutput("experimentsChecksUi")),
@@ -92,7 +97,7 @@ shinyUI(fluidPage(
                                                     "Target" = "target"),
                                                   selected = "target"))),
                      column(3,
-                            radioButtons("curveType", "Curve Type:",
+                            radioButtons("curveType", "Y-Axis Type:",
                                          c("Linear" = "linear",
                                            "Log" = "log"),
                                          selected = "linear")))
