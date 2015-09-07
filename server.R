@@ -2,6 +2,7 @@ library(shiny)
 library(plyr)
 library(dplyr)
 library(tidyr)
+library(rlist)
 
 library(ggvis)
 library(ggplot2)
@@ -106,7 +107,7 @@ shinyServer(function(input, output, session) {
       for(i in 1:length(values$experiments)){
         values$expIds <- 
           c(values$expIds,
-            values$experiments[[i]]$experiment[[1]]$id)
+            values$experiments[[i]]$experiment[[1]]$id$id)
         values$expTexts <- 
           c(values$expTexts,                 
             sprintf("%s",
@@ -130,13 +131,18 @@ shinyServer(function(input, output, session) {
       return(NULL)
     }
     cat("creating mergedRDML\n")
+    # print(input$experimentsChecks)
     isolate({
-      values$mergedRDML <- RDML$new()
-      l_ply(input$experimentsChecks,
-            function(experimentName) {
-              values$mergedRDML$Merge(
-                values$experiments[[which(values$expIds == experimentName)]])
-            })
+      values$mergedRDML <- MergeRDMLs(
+        # values$experiments[[which(values$expIds == input$experimentsChecks)]]
+        values$experiments
+      )
+        # RDML$new()
+#       l_ply(input$experimentsChecks,
+#             function(experimentName) {
+#               values$mergedRDML$Merge(
+                # values$experiments[[which(values$expIds == experimentName)]])
+            # })
       #       values$calcRelative <- {
       #         types <- laply(values$mergedRDML$target,
       #                        function(target) target$type)
@@ -174,36 +180,38 @@ shinyServer(function(input, output, session) {
     values$tbl <-
       values$mergedRDML$AsTable(
         name.pattern = paste(
-          react$position,
-          react$sample,
-          private$.sample[[react$sample]]$type,
-          data$id,
+          react$Position(run$pcrFormat),
+          react$sample$id,
+          private$.sample[[react$sample$id]]$type$value,
+          data$tar$id,
           sep = "_"),
-        minCyc = min(data$adp[, "cyc"]),
-        maxCyc = max(data$adp[, "cyc"]),
+        minCyc = min(data$adp$fpoints[, "cyc"]),
+        maxCyc = max(data$adp$fpoints[, "cyc"]),
         conditions = {
           if(id[[1]]$publisher == "Roche Diagnostics") {
-            cond <- filter(sample[[react$sample]]$annotation,
-                           property == sprintf("Roche_condition_at_%s",
-                                               react$id))$value[1]
-            ifelse(is.null(cond),
-                   NA,
-                   cond)
+            cond <- list.filter(sample[[react$sample$id]]$annotation,
+                           .$property == sprintf("Roche_condition_at_%s",
+                                               react$id$id))
+            if (length(cond) == 0)
+                   NA
+            else
+              cond[[1]]$value
           }
           else NA
         }, 
         quantity = 
           if(id[[1]]$publisher == "Roche Diagnostics") {
-            quantity <- filter(sample[[react$sample]]$annotation,
-                               property == sprintf("Roche_quantity_at_%s_%s",
-                                                   target[[data$id]]$dyeId,
-                                                   react$id))$value[1]
-            ifelse(is.null(quantity),
-                   NA,
-                   quantity)
+            quantity <- list.filter(sample[[react$sample$id]]$annotation,
+                               .$property == sprintf("Roche_quantity_at_%s_%s",
+                                                   target[[data$tar$id]]$dyeId$id,
+                                                   react$id$id))
+            if (length(quantity) == 0)
+                   NA
+            else
+              quantity[[1]]$value
           }
         else
-          sample[[react$sample]]$quantity$value
+          sample[[react$sample$id]]$quantity$value
       )
   })
   
@@ -276,17 +284,56 @@ shinyServer(function(input, output, session) {
        input$limitCycleFromTo[1] > input$backgroundFromTo[1])
       return(NULL)
     cat("rcalc substr\n")
-    substr <- values$mergedRDML$GetFData(values$tbl,
-                                         limits = input$limitCycleFromTo) %>%      
-      cbind(cyc = .[, 1],
-            apply(.[, -1], 2,
-                  function(x) CPP(.[, 1],
+    fdata <- values$mergedRDML$GetFData(values$tbl,
+                                        limits = input$limitCycleFromTo) 
+    substr <-       
+      cbind(cyc = fdata[, 1],
+            apply(fdata[, -1], 2,
+                  function(x) CPP(fdata[, 1],
                                   x,
                                   bg.range =                                          
                                     input$backgroundFromTo,
                                   smoother = FALSE,
-                                  method.norm = "none")$y))    
-    values$mergedRDML$SetFData(substr, values$tbl)
+                                  method.norm = "none")$y))
+    tbl <- values$tbl
+    tbl$exp.id <- sprintf("%s_substr", tbl$exp.id)
+    values$mergedRDML$SetFData(substr, tbl)
+    values$tbl2 <- 
+      values$mergedRDML$AsTable(
+        name.pattern = paste(
+          react$Position(run$pcrFormat),
+          react$sample$id,
+          private$.sample[[react$sample$id]]$type$value,
+          data$tar$id,
+          sep = "_"),
+        minCyc = min(data$adp$fpoints[, "cyc"]),
+        maxCyc = max(data$adp$fpoints[, "cyc"]),
+        conditions = {
+          if(id[[1]]$publisher == "Roche Diagnostics") {
+            cond <- list.filter(sample[[react$sample$id]]$annotation,
+                                .$property == sprintf("Roche_condition_at_%s",
+                                                      react$id$id))
+            if (length(cond) == 0)
+              NA
+            else
+              cond[[1]]$value
+          }
+          else NA
+        }, 
+        quantity = 
+          if(id[[1]]$publisher == "Roche Diagnostics") {
+            quantity <- list.filter(sample[[react$sample$id]]$annotation,
+                                    .$property == sprintf("Roche_quantity_at_%s_%s",
+                                                          target[[data$tar$id]]$dyeId$id,
+                                                          react$id$id))
+            if (length(quantity) == 0)
+              NA
+            else
+              quantity[[1]]$value
+          }
+        else
+          sample[[react$sample$id]]$quantity$value
+      )
     TRUE    
   })
   #  
@@ -295,9 +342,9 @@ shinyServer(function(input, output, session) {
         substrCalced() == FALSE)
       return(NULL)
     if(input$useBackgroundSubstruction == TRUE)
-      data.type = "substr"
+      data.type = ".*_substr$"
     else
-      data.type = "adp"
+      data.type = ".*"
     
     
     cat("create threshold panel\n")
@@ -305,11 +352,12 @@ shinyServer(function(input, output, session) {
     tryCatch(
       lapply(unique(values$tbl$target),
              function(trgt){
+               
+               ftbl <-  filter(values$tbl2,
+                               grepl(data.type, exp.id),
+                               target == trgt)
                fluo <-          
-                 values$mergedRDML$GetFData(
-                   filter(values$tbl,
-                          target == trgt),
-                   data.type = data.type,
+                 values$mergedRDML$GetFData(ftbl,
                    limits = input$limitCycleFromTo)[, -1]
                minfluo <- min(fluo) %>% smart.round %>% as.numeric
                maxfluo <- max(fluo) %>% smart.round %>% as.numeric
@@ -340,18 +388,20 @@ shinyServer(function(input, output, session) {
       values$tblCq <- NULL
       values$calib <- NULL
       if(input$useBackgroundSubstruction == TRUE)
-        data.type = "substr"
+        data.type = ".*_substr$"
       else
-        data.type = "adp" 
-      fdata <- values$mergedRDML$GetFData(values$tbl, 
-                                          data.type = data.type,
-                                          limits = input$limitCycleFromTo)    
+        data.type = ".*"
+      fdata <- values$mergedRDML$GetFData(filter(values$tbl2,
+                                                 grepl(data.type, exp.id)),
+                                          limits = input$limitCycleFromTo) 
       
       # calc Cq
+      
       tryCatch({
         values$tblCq <- 
-          values$tbl %>%
+          values$tbl2 %>%
           group_by(fdata.name) %>%
+          filter(grepl(data.type, exp.id)) %>% 
           mutate(Cq = as.numeric(tryCatch(
             th.cyc(fdata[, 1],
                    fdata[, fdata.name],
@@ -369,8 +419,8 @@ shinyServer(function(input, output, session) {
                           0,
                           .))},
         warning = function(w) NULL,
-        error = function(e) NULL        
-      )   
+        error = function(e) NULL
+      )
       cat("calc calib\n")
       if(!("std" %in% values$tblCq$sample.type))
         return(NULL)
@@ -463,12 +513,18 @@ shinyServer(function(input, output, session) {
       return(NULL)
     cat("plot curves\n")
     if(input$useBackgroundSubstruction == TRUE)
-      data.type <- "substr"
+      data.type = ".*_substr$"
     else
-      data.type <- "adp"
+      data.type = ".*"
     
     if(is.null(input$plateTbl)) {
-      filteredData <- filter(values$tbl,
+      filteredData <- filter(values$tbl2,
+                             exp.id == {
+                               if(input$useBackgroundSubstruction == TRUE)
+                                 paste0(input$plateTblExpSelector, "_substr")
+                               else
+                                 input$plateTblExpSelector
+                             },
                              target %in% input$filterTargets)
     } else {
       react.ids <- 
@@ -476,8 +532,13 @@ shinyServer(function(input, output, session) {
            input$plateTbl[(length(input$plateTbl)/2 + 1):length(input$plateTbl)]) %>% 
         as.character
       filteredData <- 
-        filter(values$tbl,
-               exp.id == input$plateTblExpSelector,
+        filter(values$tbl2,
+               exp.id == {
+                 if(input$useBackgroundSubstruction == TRUE)
+                   paste0(input$plateTblExpSelector, "_substr")
+                 else
+                   input$plateTblExpSelector
+                 },
                target %in% input$filterTargets,
                react.id %in% react.ids)
     }
@@ -486,7 +547,6 @@ shinyServer(function(input, output, session) {
     fluo <- 
       values$mergedRDML$GetFData( 
         filteredData,
-        data.type = data.type,
         limits = input$limitCycleFromTo,
         long.table = TRUE)
     fluo$color <- fluo[[input$colorBy]]
@@ -499,7 +559,7 @@ shinyServer(function(input, output, session) {
       )
     fluo$gr <-as.character(fluo$fdata.name)
     if(input$curveType == "log"){
-      fluo$fluo <- log(fluo$fluo)
+      fluo$fluo <- log(fluo$fluor)
       gr <- 0
       fd.name <- ""
       for(irow in 1:nrow(fluo)) {
@@ -507,28 +567,27 @@ shinyServer(function(input, output, session) {
           fd.name <- fluo$fdata.name[irow]
           gr <- gr + 1
         }
-        if(is.nan(fluo$fluo[irow]))
+        if(is.nan(fluo$fluor[irow]))
           gr <- gr + 1
         fluo[irow, "gr"] <- as.character(gr)
       }
       threshold$thresholdValY <- log(threshold$thresholdValY)
     }
     tryCatch({
-      minfluo <- round(min(fluo$fluo, na.rm = TRUE), digits = 2)
-      maxfluo <- round(max(fluo$fluo, na.rm = TRUE), digits = 2)
+      minfluo <- round(min(fluo$fluor, na.rm = TRUE), digits = 2)
+      maxfluo <- round(max(fluo$fluor, na.rm = TRUE), digits = 2)
     },
     warning = function(w) return(NULL)      
     )
     background <- data.frame(
       x1 = input$backgroundFromTo[1],
       x2 = input$backgroundFromTo[2],
-      y1 = max(fluo$fluo, na.rm = TRUE),
-      y2 = min(fluo$fluo, na.rm = TRUE))
-    
+      y1 = max(fluo$fluor, na.rm = TRUE),
+      y2 = min(fluo$fluor, na.rm = TRUE))
     fluo %>% 
-      filter(!is.nan(fluo)) %>%      
+      filter(!is.nan(fluor)) %>%      
       group_by(as.factor(gr)) %>%      
-      ggvis(~cyc, ~fluo) %>%
+      ggvis(~cyc, ~fluor) %>%
       layer_paths(stroke.hover = ~color,
                   stroke = ~color,
                   strokeWidth.hover := 4,
@@ -564,7 +623,7 @@ shinyServer(function(input, output, session) {
     cat("plot effsd\n")
     effsd <- values$calib %>%
       ldply(function(calib) {
-        if(!is.null(calib$eff))
+        if(!is.na(calib) && !is.null(calib$eff))
           data.frame(calib$eff@.Data)
       },
       .id = "target") %>%
@@ -573,7 +632,7 @@ shinyServer(function(input, output, session) {
     minmax <-
       adply(input$filterTargets, 1,
             function(trgt) {
-              if(!is.null(values$calib[[trgt]]$intercept)) {
+              if(!is.na(values$calib[[trgt]]) && !is.null(values$calib[[trgt]]$intercept)) {
                 cqvals <- filter(values$tblCq,
                                  target == trgt,
                                  !is.na(Cq))$Cq
@@ -703,13 +762,13 @@ shinyServer(function(input, output, session) {
   # Relative quantification -------------------------------------------------
   
   output$refGenesUi <- renderUI({
-    if(is.null(values$tblCq))
+    if (is.null(values$tblCq))
       return(NULL)
     cat("creating refGenesUi\n")
     refGenes <- c()
-    for(target in values$mergedRDML$target) {
-      if(target$type == "ref")
-        refGenes <- c(refGenes, target$id)
+    for (target in values$mergedRDML$target) {
+      if (target$type$value == "ref")
+        refGenes <- c(refGenes, target$id$id)
     }
     values$tblCq %>% 
       filter(sample.type %in% c("unkn", "pos")) %>%
